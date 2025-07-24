@@ -87,7 +87,12 @@ if st.button("🚀 Submit & Reveal Event"):
     st.session_state.totals.append(total_now)
     st.session_state.round += 1
     st.session_state.submitted = True
+    
+st.markdown("---")
+if st.button("➡️ Proceed to Next Round"):
+    st.session_state.submitted = False
     st.rerun()
+
 
 if st.session_state.round > TOTAL_ROUNDS:
     st.header("🎉 Game Over — Your Financial Journey Summary")

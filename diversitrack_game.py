@@ -153,7 +153,8 @@ if st.session_state.round > TOTAL_ROUNDS and not st.session_state.get("game_over
     st.metric("Volatility Penalty", f"₹{int(penalty):,}")
 
     if st.session_state.name:
-        leaderboard = leaderboard.append({"Name": st.session_state.name, "Score": int(score)}, ignore_index=True)
+        new_row = pd.DataFrame([{"Name": st.session_state.name, "Score": int(score)}])
+leaderboard = pd.concat([leaderboard, new_row], ignore_index=True)
         leaderboard.sort_values("Score", ascending=False, inplace=True)
         leaderboard.to_csv(leaderboard_file, index=False)
 

@@ -19,7 +19,7 @@ st.title("🚆 DiversiTrack: The Journey to Financial Freedom")
 st.markdown("A 10-round investment game simulating real-world events. Allocate smartly, diversify, and win!")
 
 # --- Asset Setup ---
-TOTAL_ROUNDS = 10
+TOTAL_ROUNDS = st.sidebar.number_input("🎯 Choose number of rounds", min_value=1, max_value=20, value=10)
 asset_classes = ["Equity", "Debt", "Gold", "Real Estate", "International"]
 event_pool = [
     ("COVID-19 Pandemic Crash", {"Equity": -0.25, "Debt": 0.03, "Gold": 0.08, "Real Estate": -0.15, "International": -0.20}),
@@ -136,7 +136,7 @@ if st.session_state.submitted:
         st.rerun()
 
 # --- Final Round ---
-if st.session_state.round > TOTAL_ROUNDS:
+if st.session_state.round > TOTAL_ROUNDS and not st.session_state.get("game_over", False):
     st.header("🎉 Game Over")
     st.subheader(f"Final Portfolio of {st.session_state.name}")
     final_df = pd.DataFrame([v for _, v in st.session_state.history], index=[f"Round {i+1}" for i in range(TOTAL_ROUNDS)])
@@ -160,4 +160,5 @@ if st.session_state.round > TOTAL_ROUNDS:
     st.subheader("🏆 Leaderboard")
     st.dataframe(leaderboard.head(10))
 
+    st.session_state.game_over = True
     st.stop()

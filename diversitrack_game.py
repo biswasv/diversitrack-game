@@ -46,6 +46,17 @@ for asset in ASSETS:
 if remaining > 0:
     st.sidebar.markdown(f"**Unallocated:** ₹{remaining:,}")
 
+# Toggle for upfront event visibility
+show_events = st.sidebar.checkbox("Show all future events upfront", value=True)
+
+# Generate all events at once
+all_events = [random.choice(EVENTS) for _ in range(YEARS)]
+
+if show_events:
+    st.subheader("📋 Upcoming Economic Events")
+    for i, event in enumerate(all_events, 1):
+        st.markdown(f"**Year {i}**: {event['name']}")
+
 # Simulate button
 if st.sidebar.button("Start Simulation"):
     history = []
@@ -55,7 +66,7 @@ if st.sidebar.button("Start Simulation"):
     event_log = []
 
     for year in range(1, YEARS + 1):
-        event = random.choice(EVENTS)
+        event = all_events[year - 1]
         event_log.append(event['name'])
         year_return = {}
 

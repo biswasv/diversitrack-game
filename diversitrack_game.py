@@ -75,11 +75,20 @@ if st.button("🚀 Submit Allocation and Reveal Event"):
     st.session_state.last_event = current_event
 
     # 🌀 Animation spinner
+    
     with st.spinner("Revealing the event..."):
+        st.audio("drumroll.mp3", format="audio/mp3", start_time=0)
+
         time.sleep(2)
 
     # 🔊 Sound (can be enabled with st.audio in hosted environment)
+    
     st.success(f"📢 Round {st.session_state.round} Event: {event_name}")
+    if any(r > 0 for r in returns.values()):
+        st.audio("ding.mp3", format="audio/mp3", start_time=0)
+    else:
+        st.audio("buzz.mp3", format="audio/mp3", start_time=0)
+
     st.write("Market Impact:")
     st.dataframe(pd.DataFrame.from_dict(returns, orient="index", columns=["Return"]).style.format("{:.0%}"))
 
@@ -93,7 +102,28 @@ if st.button("🚀 Submit Allocation and Reveal Event"):
         updated_val = allocation[asset] * (1 + ret) + sip_amt
         updated_portfolio[asset] = updated_val
 
+    
+    # Show table of old value, return, sip, new value
+    breakdown_data = []
+    for asset in asset_classes:
+        old_val = allocation[asset]
+        ret = returns.get(asset, 0)
+        sip_share = (allocation[asset] / active_total) if asset in active_assets else 0
+        sip_amt = st.session_state.sip * sip_share
+        new_val = updated_portfolio[asset]
+        breakdown_data.append({
+            "Asset": asset,
+            "Old Value": int(old_val),
+            "Return %": f"{ret*100:.1f}%",
+            "SIP Applied": int(sip_amt),
+            "New Value": int(new_val)
+        })
+
+    st.subheader("📊 Portfolio Update After Event")
+    st.dataframe(pd.DataFrame(breakdown_data))
+
     st.session_state.portfolio = updated_portfolio
+
     st.session_state.totals.append(sum(updated_portfolio.values()))
     st.session_state.history.append((event_name, updated_portfolio.copy()))
     st.session_state.submitted = True

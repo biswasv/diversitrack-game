@@ -3,163 +3,96 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import random
-import plotly.graph_objects as go
 
-st.set_page_config(page_title="DiversiTrack", layout="wide")
-st.title("🚂 DiversiTrack: The Journey of Diversified Investing")
+st.set_page_config(page_title="DiversiTrack - The Journey", layout="wide")
 
-# Constants
-ASSETS = ['Equity', 'Debt', 'Gold', 'Real Estate', 'International Funds']
-YEARS = 10
-START_CAPITAL = 1000000
+st.title("🚆 DiversiTrack: The Journey to Financial Freedom")
+st.markdown("A 10-round investment game simulating real-world economic events and asset class behavior.")
 
-EVENTS = [
-    {
-        'name': 'COVID-19 Pandemic Outbreak (2020)',
-        'effects': {'Equity': -0.25, 'Gold': 0.10, 'Debt': 0.02}
-    },
-    {
-        'name': 'Russia-Ukraine War Escalation (2022)',
-        'effects': {'Equity': -0.10, 'Gold': 0.15, 'International Funds': -0.05}
-    },
-    {
-        'name': 'US Fed Rate Hike Cycle (2022)',
-        'effects': {'Debt': 0.08, 'Equity': -0.05, 'Real Estate': -0.10}
-    },
-    {
-        'name': 'Budget 2025: Big Capex Push',
-        'effects': {'Equity': 0.12, 'Real Estate': 0.10, 'Debt': -0.02}
-    },
-    {
-        'name': 'Global Tech Boom (AI Disruption, 2024)',
-        'effects': {'International Funds': 0.20, 'Equity': 0.15, 'Debt': -0.02}
-    },
-    {
-        'name': 'Inflation Surge in India (2013-style)',
-        'effects': {'Gold': 0.15, 'Equity': -0.12, 'Debt': 0.03}
-    },
-    {
-        'name': 'Rupee Depreciation Against USD',
-        'effects': {'International Funds': 0.10, 'Gold': 0.05, 'Equity': -0.03}
-    },
-    {
-        'name': 'Credit Crisis & Bank Default Scare',
-        'effects': {'Debt': -0.10, 'Gold': 0.08, 'Real Estate': -0.15}
-    },
-    {
-        'name': 'Real Estate Regulatory Reform',
-        'effects': {'Real Estate': 0.12, 'Equity': 0.03}
-    },
-    {
-        'name': 'SIP Magic (Habit Power + Market Uptick)',
-        'effects': {'SIP': 0.12}
-    },
+TOTAL_ROUNDS = 10
+asset_classes = ["Equity", "Debt", "Gold", "Real Estate", "International"]
+event_pool = [
+    ("COVID-19 Pandemic Crash", {"Equity": -0.25, "Debt": 0.03, "Gold": 0.08, "Real Estate": -0.15, "International": -0.20}),
+    ("Global Tech Rally", {"Equity": 0.20, "Debt": -0.01, "Gold": -0.02, "Real Estate": 0.12, "International": 0.25}),
+    ("US Fed Rate Hike", {"Equity": -0.08, "Debt": -0.04, "Gold": 0.05, "Real Estate": -0.06, "International": -0.05}),
+    ("Geopolitical Tension in Asia", {"Equity": -0.10, "Debt": 0.01, "Gold": 0.06, "Real Estate": -0.08, "International": -0.12}),
+    ("Infrastructure Boom", {"Equity": 0.15, "Debt": 0.02, "Gold": -0.01, "Real Estate": 0.20, "International": 0.05}),
+    ("Oil Price Shock", {"Equity": -0.12, "Debt": -0.01, "Gold": 0.07, "Real Estate": -0.10, "International": -0.08}),
+    ("Green Energy Revolution", {"Equity": 0.18, "Debt": 0.00, "Gold": 0.02, "Real Estate": 0.14, "International": 0.10}),
+    ("SIP Magic", {"Equity": 0.10, "Debt": 0.05, "Gold": 0.07, "Real Estate": 0.06, "International": 0.08}),
+    ("Recession Scare", {"Equity": -0.20, "Debt": 0.04, "Gold": 0.10, "Real Estate": -0.15, "International": -0.18}),
+    ("Budget Boost to Infra", {"Equity": 0.16, "Debt": 0.01, "Gold": -0.01, "Real Estate": 0.18, "International": 0.05}),
 ]
 
-# Session state initialization
-if 'round' not in st.session_state:
-    st.session_state.round = 0
-    st.session_state.portfolio = {a: START_CAPITAL // len(ASSETS) for a in ASSETS}
-    st.session_state.sip = 0
+if "round" not in st.session_state:
+    st.session_state.round = 1
     st.session_state.history = []
-    st.session_state.values_over_time = [START_CAPITAL]
-    st.session_state.sip_alloc = {a: 0 for a in ASSETS}
+    st.session_state.portfolio = {asset: 200000 for asset in asset_classes}
+    st.session_state.sip = 0
+    st.session_state.totals = []
 
-# User SIP Input (only at first round)
-if st.session_state.round == 0:
-    st.sidebar.subheader("📥 Enter Annual SIP Amount")
-    sip_amount = st.sidebar.number_input("SIP per year (₹)", min_value=0, value=120000, step=10000)
-    st.session_state.sip = sip_amount
+if st.session_state.round == 1:
+    st.session_state.sip = st.sidebar.number_input("💸 Monthly SIP (₹)", min_value=0, max_value=100000, step=1000, value=10000)
 
-# Asset Allocation
-st.sidebar.subheader(f"🔄 Reallocate for Round {st.session_state.round + 1}")
-new_alloc = {}
-total_alloc = 0
-for asset in ASSETS:
-    val = st.sidebar.number_input(f"{asset} (₹)", min_value=0, value=int(st.session_state.portfolio[asset]), step=10000)
-    new_alloc[asset] = val
-    total_alloc += val
+if st.session_state.round > 1:
+    st.subheader(f"🔄 End of Round {st.session_state.round - 1} Summary")
+    st.dataframe(pd.DataFrame([st.session_state.portfolio], index=["Your Portfolio"]).T.style.format("₹{:,.0f}"))
 
-# Allocation check
-if total_alloc > st.session_state.values_over_time[-1]:
-    st.sidebar.error("🚫 Total allocation exceeds available capital.")
-else:
-    if st.sidebar.button("▶️ Play Round"):
-        st.session_state.round += 1
-        st.session_state.portfolio = new_alloc
+current_event = event_pool[st.session_state.round - 1]
+st.markdown(f"### 📢 Event {st.session_state.round}: {current_event[0]}")
+st.write("Impact on Assets:")
+event_impact_df = pd.DataFrame.from_dict(current_event[1], orient="index", columns=["Return %"])
+st.dataframe(event_impact_df.style.format("{:.0%}"))
 
-        # Select and show event
-        event = random.choice(EVENTS)
-        st.subheader(f"📰 Round {st.session_state.round}: {event['name']}")
-        st.markdown("### 🔎 Impact:")
-        for asset, change in event['effects'].items():
-            impact_pct = f"{change*100:+.1f}%"
-            st.markdown(f"- {asset}: {impact_pct}")
+st.markdown(f"### 🧮 Allocate your funds for Round {st.session_state.round}")
 
-        # Apply event effects
-        portfolio = st.session_state.portfolio.copy()
-        for asset in portfolio:
-            change = event['effects'].get(asset, random.uniform(-0.05, 0.15))
-            portfolio[asset] *= (1 + change)
+allocation = {}
+total_value = sum(st.session_state.portfolio.values())
+col1, col2 = st.columns(2)
 
-        # Apply SIP Magic
-        sip_boost = event['effects'].get('SIP', 0)
-        sip_value = st.session_state.sip * (1 + sip_boost)
+with col1:
+    for asset in asset_classes[:3]:
+        val = st.number_input(f"{asset} (₹)", min_value=0, max_value=int(total_value), value=int(st.session_state.portfolio[asset]), step=10000, key=f"alloc_{asset}")
+        allocation[asset] = val
 
-        # Distribute SIP as per new allocation
-        sip_distribution = {}
-        total_alloc_val = sum(new_alloc.values())
-        for asset in ASSETS:
-            proportion = new_alloc[asset] / total_alloc_val if total_alloc_val else 0
-            sip_distribution[asset] = proportion * sip_value
-            portfolio[asset] += sip_distribution[asset]
+with col2:
+    for asset in asset_classes[3:]:
+        val = st.number_input(f"{asset} (₹)", min_value=0, max_value=int(total_value), value=int(st.session_state.portfolio[asset]), step=10000, key=f"alloc_{asset}")
+        allocation[asset] = val
 
-        # Update and record
-        total = sum(portfolio.values())
-        st.session_state.portfolio = portfolio
-        st.session_state.values_over_time.append(total)
+if st.button("🚀 Submit & Proceed"):
+    updated_portfolio = {}
+    active_assets = [a for a in asset_classes if allocation[a] > 0]
+    active_total = sum(allocation[a] for a in active_assets)
 
-        st.session_state.history.append({
-            "Round": st.session_state.round,
-            **portfolio,
-            "SIP Used": sip_value,
-            "Event": event['name'],
-            "Total": total
-        })
+    for asset in asset_classes:
+        ret = current_event[1].get(asset, 0)
+        sip_share = (allocation[asset] / active_total) if asset in active_assets and active_total > 0 else 0
+        sip_amount = st.session_state.sip * sip_share
+        updated_value = allocation[asset] * (1 + ret) + sip_amount
+        updated_portfolio[asset] = updated_value
 
-# Display Score Table
-if st.session_state.round > 0:
-    df = pd.DataFrame(st.session_state.history)
-    st.subheader("📊 Portfolio Summary After Each Round")
-    st.dataframe(df.set_index("Round"))
+    st.session_state.portfolio = updated_portfolio
+    st.session_state.history.append((current_event[0], updated_portfolio.copy()))
+    total_now = sum(updated_portfolio.values())
+    st.session_state.totals.append(total_now)
+    st.session_state.round += 1
 
-    # Score calculation
-    returns = [st.session_state.values_over_time[i+1] / st.session_state.values_over_time[i] - 1
-               for i in range(st.session_state.round)]
-    volatility = np.std(returns)
-    total_return = st.session_state.values_over_time[-1] - START_CAPITAL
-    diversification_bonus = 10000 if len([v for v in st.session_state.portfolio.values() if v > 0]) >= 4 else 0
-    score = total_return - (volatility * 2 * START_CAPITAL) + diversification_bonus
+if st.session_state.round > TOTAL_ROUNDS:
+    st.header("🎉 Game Over — Your Financial Journey Summary")
+    final_df = pd.DataFrame([p for _, p in st.session_state.history], index=[f"Round {i+1}" for i in range(TOTAL_ROUNDS)])
+    st.line_chart(final_df)
 
-    st.subheader("🏆 Current Score")
-    st.markdown(f"**Portfolio Value:** ₹{st.session_state.values_over_time[-1]:,.0f}")
-    st.markdown(f"**Total Return:** ₹{total_return:,.0f}")
-    st.markdown(f"**Volatility Penalty:** ₹{volatility * 2 * START_CAPITAL:,.0f}")
-    st.markdown(f"**Diversification Bonus:** ₹{diversification_bonus:,}")
-    st.markdown(f"**Current Score:** ₹{score:,.0f}")
+    st.write("📊 Final Portfolio Value:")
+    st.dataframe(pd.DataFrame(st.session_state.portfolio.items(), columns=["Asset Class", "Value"]).set_index("Asset Class").style.format("₹{:,.0f}"))
 
-    if st.session_state.round == YEARS:
-        st.success("🎉 Game Over! Final Portfolio Score Displayed Above.")
-        st.balloons()
+    total_final = sum(st.session_state.portfolio.values())
+    std_dev = np.std(st.session_state.totals)
+    penalty = std_dev * 0.1
+    diversification_bonus = 20000 if sum(1 for v in st.session_state.portfolio.values() if v > 0) >= 4 else 0
+    final_score = total_final - penalty + diversification_bonus
 
-        # Plot portfolio over time
-        st.subheader("📈 Portfolio Growth Over Time")
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            y=st.session_state.values_over_time,
-            x=list(range(YEARS + 1)),
-            mode='lines+markers',
-            name='Total Value'
-        ))
-        fig.update_layout(title="Total Portfolio Value", xaxis_title="Round", yaxis_title="₹ Value")
-        st.plotly_chart(fig, use_container_width=True)
+    st.markdown(f"🏁 **Final Score:** ₹{int(final_score):,}")
+    st.markdown(f"📉 Volatility Penalty (Std Dev × 0.1): ₹{int(penalty):,}")
+    st.markdown(f"🎁 Diversification Bonus: ₹{diversification_bonus:,}")
+    st.stop()

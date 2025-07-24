@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import random
+import time
 
 st.set_page_config(page_title="DiversiTrack - The Journey", layout="wide")
 
@@ -30,19 +31,15 @@ if "round" not in st.session_state:
     st.session_state.portfolio = {asset: 200000 for asset in asset_classes}
     st.session_state.sip = 0
     st.session_state.totals = []
+    st.session_state.submitted = False
+    st.session_state.last_event = None
 
 if st.session_state.round == 1:
     st.session_state.sip = st.sidebar.number_input("💸 Monthly SIP (₹)", min_value=0, max_value=100000, step=1000, value=10000)
 
-if st.session_state.round > 1:
+if st.session_state.round > 1 and not st.session_state.submitted:
     st.subheader(f"🔄 End of Round {st.session_state.round - 1} Summary")
     st.dataframe(pd.DataFrame([st.session_state.portfolio], index=["Your Portfolio"]).T.style.format("₹{:,.0f}"))
-
-current_event = event_pool[st.session_state.round - 1]
-st.markdown(f"### 📢 Event {st.session_state.round}: {current_event[0]}")
-st.write("Impact on Assets:")
-event_impact_df = pd.DataFrame.from_dict(current_event[1], orient="index", columns=["Return %"])
-st.dataframe(event_impact_df.style.format("{:.0%}"))
 
 st.markdown(f"### 🧮 Allocate your funds for Round {st.session_state.round}")
 
@@ -60,23 +57,37 @@ with col2:
         val = st.number_input(f"{asset} (₹)", min_value=0, max_value=int(total_value), value=int(st.session_state.portfolio[asset]), step=10000, key=f"alloc_{asset}")
         allocation[asset] = val
 
-if st.button("🚀 Submit & Proceed"):
+if st.button("🚀 Submit & Reveal Event"):
     updated_portfolio = {}
     active_assets = [a for a in asset_classes if allocation[a] > 0]
     active_total = sum(allocation[a] for a in active_assets)
 
+    current_event = event_pool[st.session_state.round - 1]
+    event_name, returns = current_event
+    st.session_state.last_event = current_event
+
+    with st.spinner("🔍 Revealing Event..."):
+        time.sleep(2)
+
+    st.markdown(f"### 📢 Event {st.session_state.round}: {event_name}")
+    st.write("Impact on Assets:")
+    event_impact_df = pd.DataFrame.from_dict(returns, orient="index", columns=["Return %"])
+    st.dataframe(event_impact_df.style.format("{:.0%}"))
+
     for asset in asset_classes:
-        ret = current_event[1].get(asset, 0)
+        ret = returns.get(asset, 0)
         sip_share = (allocation[asset] / active_total) if asset in active_assets and active_total > 0 else 0
         sip_amount = st.session_state.sip * sip_share
         updated_value = allocation[asset] * (1 + ret) + sip_amount
         updated_portfolio[asset] = updated_value
 
     st.session_state.portfolio = updated_portfolio
-    st.session_state.history.append((current_event[0], updated_portfolio.copy()))
+    st.session_state.history.append((event_name, updated_portfolio.copy()))
     total_now = sum(updated_portfolio.values())
     st.session_state.totals.append(total_now)
     st.session_state.round += 1
+    st.session_state.submitted = True
+    st.experimental_rerun()
 
 if st.session_state.round > TOTAL_ROUNDS:
     st.header("🎉 Game Over — Your Financial Journey Summary")
@@ -96,3 +107,5 @@ if st.session_state.round > TOTAL_ROUNDS:
     st.markdown(f"📉 Volatility Penalty (Std Dev × 0.1): ₹{int(penalty):,}")
     st.markdown(f"🎁 Diversification Bonus: ₹{diversification_bonus:,}")
     st.stop()
+else:
+    st.session_state.submitted = False

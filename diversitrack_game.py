@@ -65,8 +65,8 @@ elif st.session_state.round <= st.session_state.num_rounds:
                     st.stop()
                 st.session_state.allocation = allocation
                 st.session_state.awaiting_event = True
-                st.experimental_set_query_params(refresh="1")
-                st.experimental_rerun()
+                # removed set_query_params (no longer needed)
+                st.rerun()
 
     else:
         allocation = st.session_state.allocation
@@ -108,8 +108,8 @@ elif st.session_state.round <= st.session_state.num_rounds:
         st.session_state.awaiting_event = False
 
         if st.button("➡️ Next Round"):
-            st.experimental_set_query_params(refresh="0")
-            st.experimental_rerun()
+            # removed set_query_params (no longer needed)
+            st.rerun()
 
 # Game End
 else:
@@ -131,4 +131,4 @@ else:
     if st.button("🔄 Play Again"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
-        st.experimental_rerun()
+        st.rerun()

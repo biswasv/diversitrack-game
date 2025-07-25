@@ -5,7 +5,7 @@ import random
 
 st.set_page_config(page_title="DiversiTrack", layout="wide")
 
-# Initialize session state once
+# Initialize session state
 if "initialized" not in st.session_state:
     st.session_state.initialized = True
     st.session_state.round = 1
@@ -23,8 +23,9 @@ if "initialized" not in st.session_state:
     st.session_state.leaderboard = []
     st.session_state.game_started = False
     st.session_state.awaiting_event = False
+    st.session_state.allocation = {}
 
-# Game setup form
+# Game setup
 if not st.session_state.game_started:
     with st.form("setup_form"):
         st.title("🚂 Welcome to DiversiTrack")
@@ -38,32 +39,34 @@ if not st.session_state.game_started:
             st.session_state.num_rounds = num_rounds
             st.session_state.sip = sip_amt
             st.session_state.game_started = True
-            st.experimental_rerun()
 
+# Gameplay
 elif st.session_state.round <= st.session_state.num_rounds:
-
     st.title(f"📈 DiversiTrack - Round {st.session_state.round} of {st.session_state.num_rounds}")
     total_portfolio = sum(st.session_state.portfolio.values())
     st.markdown(f"💼 **Total Portfolio Value:** ₹{int(total_portfolio):,}")
 
-    allocation = {}
     if not st.session_state.awaiting_event:
         with st.form("allocation_form"):
             st.subheader("🔀 Allocate your portfolio:")
+            allocation = {}
             for asset in st.session_state.portfolio.keys():
                 allocation[asset] = st.number_input(
-                    asset, min_value=0, value=int(st.session_state.portfolio[asset]),
-                    step=10000, key=f"alloc_{asset}_{st.session_state.round}"
+                    asset,
+                    min_value=0,
+                    value=int(st.session_state.portfolio[asset]),
+                    step=10000,
+                    key=f"alloc_{asset}_{st.session_state.round}"
                 )
             submitted = st.form_submit_button("Submit Allocation")
-
-        if submitted:
-            if sum(allocation.values()) != total_portfolio:
-                st.error(f"Total must be ₹{int(total_portfolio):,}")
-                st.stop()
-            st.session_state.allocation = allocation
-            st.session_state.awaiting_event = True
-            st.experimental_rerun()
+            if submitted:
+                if sum(allocation.values()) != total_portfolio:
+                    st.error(f"Total must be ₹{int(total_portfolio):,}")
+                    st.stop()
+                st.session_state.allocation = allocation
+                st.session_state.awaiting_event = True
+                st.experimental_set_query_params(refresh="1")
+                st.experimental_rerun()
 
     else:
         allocation = st.session_state.allocation
@@ -78,7 +81,7 @@ elif st.session_state.round <= st.session_state.num_rounds:
         event_name, returns = random.choice(events)
         st.session_state.event_history.append((event_name, returns))
 
-        # Proportional SIP
+        # Apply SIP proportionally
         sip_applied = {a: (allocation[a] / total_portfolio) * st.session_state.sip for a in allocation}
         new_portfolio = {}
         result_table = []
@@ -91,8 +94,8 @@ elif st.session_state.round <= st.session_state.num_rounds:
             result_table.append({
                 "Asset": asset,
                 "Old Value": int(old_val),
-                "Event Return %": returns[asset],
                 "SIP Applied": int(sip),
+                "Event Return %": returns[asset],
                 "New Value": int(growth)
             })
 
@@ -105,8 +108,10 @@ elif st.session_state.round <= st.session_state.num_rounds:
         st.session_state.awaiting_event = False
 
         if st.button("➡️ Next Round"):
+            st.experimental_set_query_params(refresh="0")
             st.experimental_rerun()
 
+# Game End
 else:
     st.balloons()
     final_value = sum(st.session_state.portfolio.values())
@@ -114,7 +119,11 @@ else:
     st.metric("🏁 Final Portfolio Value", f"₹{int(final_value):,}")
 
     # Add to leaderboard
-    st.session_state.leaderboard.append({"Name": st.session_state.player_name, "Value": int(final_value)})
+    st.session_state.leaderboard.append({
+        "Name": st.session_state.player_name,
+        "Value": int(final_value)
+    })
+
     lb_df = pd.DataFrame(st.session_state.leaderboard).sort_values(by="Value", ascending=False).reset_index(drop=True)
     st.subheader("🏆 Leaderboard")
     st.dataframe(lb_df)

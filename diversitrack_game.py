@@ -2,7 +2,7 @@
 # (truncated intro...)
 
 # leaderboard logic fixed
-if st.session_state.round > TOTAL_ROUNDS and not st.session_state.get("game_over", False):
+if st.session_state.get("round", 1) > TOTAL_ROUNDS and not st.session_state.get("game_over", False):
     st.subheader("🏁 Game Over! Final Score")
     st.write(f"Name: {st.session_state.name}")
     st.write(f"Final Score: {score:.0f}")

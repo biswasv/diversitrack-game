@@ -37,6 +37,9 @@ events = [
 
 st.title("🚂 DiversiTrack: The Journey to Financial Freedom")
 
+if "last_round_total" not in st.session_state:
+    st.session_state["last_round_total"] = 1000000
+
 if "start_game" not in st.session_state:
     st.session_state.start_game = False
 

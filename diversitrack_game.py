@@ -37,8 +37,12 @@ events = [
 
 st.title("🚂 DiversiTrack: The Journey to Financial Freedom")
 
-if st.session_state.name == "":
-    st.session_state.name = st.text_input("Enter your name to start:", "")
+if "name" not in st.session_state or st.session_state.name == "":
+    st.subheader("🧑 Enter Player Name to Start")
+    name_input = st.text_input("Enter your name:")
+    if st.button("Start Game") and name_input.strip():
+        st.session_state.name = name_input.strip()
+        st.experimental_rerun()
     st.stop()
 
 # Show current round and portfolio

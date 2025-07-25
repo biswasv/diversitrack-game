@@ -5,10 +5,10 @@ import random
 
 st.set_page_config(page_title="DiversiTrack", layout="wide")
 
-# Initialize session state
-if "round" not in st.session_state:
+# Initialize session state once
+if "initialized" not in st.session_state:
+    st.session_state.initialized = True
     st.session_state.round = 1
-if "portfolio" not in st.session_state:
     st.session_state.portfolio = {
         "Equity": 200000,
         "Debt": 200000,
@@ -16,18 +16,13 @@ if "portfolio" not in st.session_state:
         "Real Estate": 200000,
         "International": 200000,
     }
-if "sip" not in st.session_state:
     st.session_state.sip = 120000
-if "num_rounds" not in st.session_state:
     st.session_state.num_rounds = 5
-if "event_history" not in st.session_state:
     st.session_state.event_history = []
-if "player_name" not in st.session_state:
     st.session_state.player_name = ""
-if "leaderboard" not in st.session_state:
     st.session_state.leaderboard = []
-if "game_started" not in st.session_state:
     st.session_state.game_started = False
+    st.session_state.awaiting_event = False
 
 # Game setup form
 if not st.session_state.game_started:
@@ -46,23 +41,32 @@ if not st.session_state.game_started:
             st.experimental_rerun()
 
 elif st.session_state.round <= st.session_state.num_rounds:
+
     st.title(f"📈 DiversiTrack - Round {st.session_state.round} of {st.session_state.num_rounds}")
     total_portfolio = sum(st.session_state.portfolio.values())
     st.markdown(f"💼 **Total Portfolio Value:** ₹{int(total_portfolio):,}")
 
     allocation = {}
-    with st.form("allocation_form"):
-        st.subheader("🔀 Allocate your portfolio:")
-        for asset in st.session_state.portfolio.keys():
-            allocation[asset] = st.number_input(asset, min_value=0, value=int(st.session_state.portfolio[asset]), step=10000, key=f"alloc_{asset}_{st.session_state.round}")
-        submitted = st.form_submit_button("Submit Allocation")
+    if not st.session_state.awaiting_event:
+        with st.form("allocation_form"):
+            st.subheader("🔀 Allocate your portfolio:")
+            for asset in st.session_state.portfolio.keys():
+                allocation[asset] = st.number_input(
+                    asset, min_value=0, value=int(st.session_state.portfolio[asset]),
+                    step=10000, key=f"alloc_{asset}_{st.session_state.round}"
+                )
+            submitted = st.form_submit_button("Submit Allocation")
 
-    if submitted:
-        if sum(allocation.values()) != total_portfolio:
-            st.error(f"Total must be ₹{int(total_portfolio):,}")
-            st.stop()
+        if submitted:
+            if sum(allocation.values()) != total_portfolio:
+                st.error(f"Total must be ₹{int(total_portfolio):,}")
+                st.stop()
+            st.session_state.allocation = allocation
+            st.session_state.awaiting_event = True
+            st.experimental_rerun()
 
-        # Generate random event
+    else:
+        allocation = st.session_state.allocation
         events = [
             ("Tech Boom", {"Equity": 12, "Debt": 3, "Gold": 2, "Real Estate": 6, "International": 10}),
             ("Oil Price Crash", {"Equity": -6, "Debt": 4, "Gold": 5, "Real Estate": -2, "International": -4}),
@@ -98,7 +102,10 @@ elif st.session_state.round <= st.session_state.num_rounds:
 
         st.session_state.portfolio = new_portfolio
         st.session_state.round += 1
-        st.experimental_rerun()
+        st.session_state.awaiting_event = False
+
+        if st.button("➡️ Next Round"):
+            st.experimental_rerun()
 
 else:
     st.balloons()

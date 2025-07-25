@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 import random
 
-st.set_page_config(page_title="DiversiTrack Game", layout="wide")
+st.set_page_config(page_title="DiversiTrack", layout="wide")
 
 # Initialize session state
 if "round" not in st.session_state:
@@ -19,69 +19,80 @@ if "portfolio" not in st.session_state:
 if "sip" not in st.session_state:
     st.session_state.sip = 120000
 if "num_rounds" not in st.session_state:
-    st.session_state.num_rounds = 3
-if "event" not in st.session_state:
-    st.session_state.event = {}
+    st.session_state.num_rounds = 5
+if "event_history" not in st.session_state:
+    st.session_state.event_history = []
 
 # Sidebar Inputs
-st.sidebar.markdown("🎯 **Choose number of rounds**")
-st.session_state.num_rounds = st.sidebar.number_input("Rounds", min_value=1, max_value=10, value=st.session_state.num_rounds, step=1)
+st.sidebar.title("🎯 Game Setup")
+st.session_state.num_rounds = st.sidebar.number_input("Number of Rounds", 1, 10, st.session_state.num_rounds)
+st.session_state.sip = st.sidebar.number_input("Annual SIP Amount", 0, 500000, st.session_state.sip, step=12000)
 
-st.sidebar.markdown("💸 **SIP Amount (annual)**")
-st.session_state.sip = st.sidebar.number_input("SIP", min_value=0, value=st.session_state.sip, step=10000)
-
-st.title(f"Round {st.session_state.round} Asset Allocation")
+st.title("🚂 DiversiTrack: Diversification Game")
+st.header(f"Round {st.session_state.round}")
 
 total_portfolio = sum(st.session_state.portfolio.values())
-st.markdown(f"💼 Total portfolio value from last round: ₹{int(total_portfolio):,}")
+st.markdown(f"💼 **Total portfolio value:** ₹{int(total_portfolio):,}")
 
 # Asset Allocation Input
 allocation = {}
-with st.form("allocation_form"):
-    st.markdown("#### Enter your asset allocation for this round")
-    total_input = 0
+with st.form("allocation_form", clear_on_submit=False):
+    st.subheader("📊 Enter Asset Allocation")
     for asset in st.session_state.portfolio.keys():
-        val = st.number_input(f"{asset}", min_value=0, value=int(st.session_state.portfolio[asset]), step=10000)
-        allocation[asset] = val
-        total_input += val
-
+        allocation[asset] = st.number_input(asset, min_value=0, value=int(st.session_state.portfolio[asset]), step=10000, key=f"alloc_{asset}")
     submitted = st.form_submit_button("Submit Allocation")
 
+# Process round if submitted
 if submitted:
-    if total_input != total_portfolio:
-        st.error(f"⚠️ Allocation must total ₹{int(total_portfolio):,}")
-    else:
-        # Generate event returns randomly for each asset
-        event_returns = {asset: random.randint(-10, 15) for asset in allocation}
-        st.session_state.event = event_returns
+    alloc_total = sum(allocation.values())
+    if alloc_total != total_portfolio:
+        st.error(f"Total allocation must be ₹{int(total_portfolio):,}")
+        st.stop()
 
-        sip_amount = st.session_state.sip
-        sip_allocation = {}
-        for asset in allocation:
-            proportion = allocation[asset] / total_input if total_input > 0 else 0
-            sip_allocation[asset] = int(sip_amount * proportion)
+    # Simulate an event
+    events = [
+        ("Tech Boom", {"Equity": 12, "Debt": 3, "Gold": 2, "Real Estate": 6, "International": 10}),
+        ("Oil Price Crash", {"Equity": -6, "Debt": 4, "Gold": 5, "Real Estate": -2, "International": -4}),
+        ("Interest Rate Hike", {"Equity": -5, "Debt": -2, "Gold": 4, "Real Estate": -3, "International": -3}),
+        ("Festive Demand Surge", {"Equity": 7, "Debt": 2, "Gold": 3, "Real Estate": 5, "International": 6}),
+        ("Geopolitical Risk", {"Equity": -10, "Debt": 5, "Gold": 8, "Real Estate": -4, "International": -8}),
+        ("SIP Magic", {"Equity": 5, "Debt": 2, "Gold": 1, "Real Estate": 3, "International": 2}),
+    ]
+    event_name, returns = random.choice(events)
+    st.session_state.event_history.append((event_name, returns))
 
-        new_values = {}
-        for asset in allocation:
-            growth = allocation[asset] * (1 + event_returns[asset]/100)
-            new_values[asset] = int(growth + sip_allocation[asset])
+    # Apply SIP proportionally
+    sip_applied = {}
+    for asset in allocation:
+        sip_applied[asset] = (allocation[asset] / alloc_total) * st.session_state.sip if alloc_total > 0 else 0
 
-        df = pd.DataFrame({
-            "Asset": list(allocation.keys()),
-            "Old Value": list(allocation.values()),
-            "Event Return %": list(event_returns.values()),
-            "SIP Applied": list(sip_allocation.values()),
-            "New Value": list(new_values.values())
+    # Calculate new values
+    new_portfolio = {}
+    result_table = []
+    for asset in allocation:
+        old_val = allocation[asset]
+        sip = sip_applied[asset]
+        growth = (old_val + sip) * (1 + returns[asset] / 100)
+        new_portfolio[asset] = int(growth)
+        result_table.append({
+            "Asset": asset,
+            "Old Value": int(old_val),
+            "Event Return %": returns[asset],
+            "SIP Applied": int(sip),
+            "New Value": int(growth)
         })
 
-        st.success(f"📢 Round {st.session_state.round} Event Summary")
-        st.dataframe(df, use_container_width=True)
+    df = pd.DataFrame(result_table)
+    st.success(f"📢 Event: **{event_name}** — impact on your portfolio:")
+    st.dataframe(df, use_container_width=True)
 
-        st.session_state.portfolio = new_values
-        if st.session_state.round < st.session_state.num_rounds:
-            if st.button("Next Round ➡️"):
-                st.session_state.round += 1
-                st.experimental_rerun()
-        else:
-            st.balloons()
-            st.success("🎉 Game Over! You've completed all rounds.")
+    st.session_state.portfolio = new_portfolio
+
+    if st.session_state.round < st.session_state.num_rounds:
+        if st.button("➡️ Go to Next Round"):
+            st.session_state.round += 1
+            st.experimental_rerun()
+    else:
+        st.balloons()
+        st.success("🎉 Game Over!")
+        st.metric("💰 Final Portfolio Value", f"₹{int(sum(st.session_state.portfolio.values())):,}")

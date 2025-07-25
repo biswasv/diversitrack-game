@@ -26,9 +26,11 @@ if "player_name" not in st.session_state:
     st.session_state.player_name = ""
 if "leaderboard" not in st.session_state:
     st.session_state.leaderboard = []
+if "game_started" not in st.session_state:
+    st.session_state.game_started = False
 
 # Game setup form
-if st.session_state.round == 1 and not st.session_state.player_name:
+if not st.session_state.game_started:
     with st.form("setup_form"):
         st.title("🚂 Welcome to DiversiTrack")
         st.subheader("Set up your game:")
@@ -40,6 +42,7 @@ if st.session_state.round == 1 and not st.session_state.player_name:
             st.session_state.player_name = name
             st.session_state.num_rounds = num_rounds
             st.session_state.sip = sip_amt
+            st.session_state.game_started = True
             st.experimental_rerun()
 
 elif st.session_state.round <= st.session_state.num_rounds:
@@ -109,7 +112,6 @@ else:
     st.subheader("🏆 Leaderboard")
     st.dataframe(lb_df)
 
-    # Reset button
     if st.button("🔄 Play Again"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
